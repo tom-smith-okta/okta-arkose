@@ -1,0 +1,132 @@
+<html>
+
+<head>
+
+<!-- <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+ -->
+
+<!-- javascript -->
+
+<!-- jquery -->
+<script src="javascript/jquery.min.js"></script>
+
+<!-- bootstrap -->
+<script src="javascript/bootstrap.min.js"></script>
+
+<!-- bootstrap bundle -->
+<script src="javascript/bootstrap.bundle.min.js"></script>
+
+<!-- okta sign-in widget -->
+<script src="javascript/okta-sign-in.min.js"></script>
+
+<!-- css -->
+
+<link href = "css/bootstrap.min.css" rel = "stylesheet" type="text/css">
+
+<link
+  href="https://ok1static.oktacdn.com/assets/js/sdk/okta-signin-widget/2.14.0/css/okta-sign-in.min.css"
+  type="text/css"
+  rel="stylesheet"/>
+
+<script>
+
+// nodejs
+var baseUrl = "http://localhost:3378"
+
+var options = {
+	baseUrl: baseUrl,
+	contextData: sessionStorage.getItem("arkoseToken")
+}
+
+var signIn = new OktaSignIn(options)
+
+signIn.session.get(function (res) {
+
+	console.log("the result of session.get is: ")
+
+	console.dir(res)
+
+	if (res.status === 'ACTIVE') {
+		console.log("the user has a session")
+	}
+
+	// No session, or error retrieving the session. Render the Sign-In Widget.
+	else {
+		console.log("the user does not have a session")
+	}
+
+	// signIn.renderEl(
+	// 	{el: '#widget-container'},
+ //    	function() {},
+ //    	function(err) { console.err(err) }
+ //    );
+
+	signIn.renderEl(
+		{ el: '#widget-container'},
+		function success(res) {
+
+			console.dir(res)
+
+			if (res.status === 'SUCCESS') {
+
+				var sessionToken = res.session.token
+
+				console.log("the res object in success is:")
+				console.dir(res)
+				console.log("the sessionToken is: " + sessionToken)
+
+				// res.session.setCookieAndRedirect('http://localhost:3378');
+
+				var oauth_url = "https://okta-arkose.oktapreview.com/oauth2/v1/authorize"
+
+				oauth_url += "?client_id=0oajdyrcz6yCh60oG0h7"
+				oauth_url += "&response_type=id_token"
+				oauth_url += "&scope=openid&prompt=none"
+				oauth_url += "&redirect_uri=http://localhost:3378/okta.html"
+				oauth_url += "&state=Af0ifjslDkj&nonce=n-0S6_WzA2Mj"
+				oauth_url += "&sessionToken=" + sessionToken
+
+				location.replace(oauth_url)
+
+
+			}
+			else {
+				console.log("the user does not have a session")
+			}
+		},
+		function error(err) {
+        	alert('ERROR: ' + err);
+        	if (err.name === 'REJECTION_ERROR') { 
+          		// window.location.replace("http://www.experian.com/error.html");
+        	}
+      	}
+	)
+})
+
+</script>
+
+</head>
+
+<body>
+
+
+<div class="container">
+	<div class="row">
+		<div class="col-sm">
+			<p><a href = "index.html">home</a></p>
+ 		</div>
+		
+		<div class="col-sm">
+
+<!--  			<div id="widget-container" style="display: none"></div>
+ -->
+ 			<div id="widget-container"></div>
+
+		</div>
+	</div>
+</div>
+
+
+</body>
+
+</html>

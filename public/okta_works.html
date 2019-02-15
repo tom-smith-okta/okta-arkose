@@ -1,0 +1,184 @@
+<html>
+
+<head>
+
+<!-- <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+ -->
+
+<!-- javascript -->
+
+<!-- jquery -->
+<script src="javascript/jquery.min.js"></script>
+
+<!-- bootstrap -->
+<script src="javascript/bootstrap.min.js"></script>
+
+<!-- bootstrap bundle -->
+<script src="javascript/bootstrap.bundle.min.js"></script>
+
+<!-- okta sign-in widget -->
+<!-- <script src="javascript/okta-sign-in.min.js"></script> -->
+
+<script src="javascript/okta-sign-in.js"></script>
+
+
+<!-- css -->
+
+<link
+  href="https://ok1static.oktacdn.com/assets/js/sdk/okta-signin-widget/2.14.0/css/okta-sign-in.min.css"
+  type="text/css"
+  rel="stylesheet"/>
+
+<link href = "css/okta-theme.css" rel = "stylesheet" type="text/css">
+
+<link href = "css/bootstrap.min.css" rel = "stylesheet" type="text/css">
+
+<script>
+
+// var baseUrl = "https://okta-arkose.oktapreview.com"
+
+// nginx
+// var baseUrl = "http://localhost:8526"
+
+// Tray.io
+// var baseUrl = "https://c65999ed-94ab-47ba-b753-8d2409e5bae7.trayapp.io"
+// var baseUrl = "https://2259a015-0774-420d-9c5a-94a4d61ee980.trayapp.io"
+
+// nodejs
+var baseUrl = "http://localhost:3378"
+
+// var baseUrl = "https://okta-widget-receiver.herokuapp.com"
+
+var testdata = {
+	somekey: "somevalue"
+}
+
+// var signInParams = {
+// 	baseUrl: baseUrl,
+// 	otherdata: JSON.stringify(testdata)
+// }
+
+// var options = {
+// 	baseUrl: baseUrl,
+// 	otherdata: JSON.stringify(testdata)
+// }
+
+var options = {
+	baseUrl: baseUrl,
+	contextData: "somevalue"
+}
+
+// var options = {{{options}}};
+
+
+// var signIn = new OktaSignIn(signInParams)
+
+var signIn = new OktaSignIn(options)
+
+signIn.session.get(function (res) {
+
+	console.log("the result of session.get is: ")
+
+	console.dir(res)
+
+	if (res.status === 'ACTIVE') {
+		console.log("the user has a session")
+	}
+
+	// No session, or error retrieving the session. Render the Sign-In Widget.
+	else {
+		console.log("the user does not have a session")
+	}
+
+	signIn.renderEl(
+		{ el: '#widget-container'},
+		function success(res) {
+			console.log("the result of success is: ")
+
+			console.dir(res)
+
+			if (res.status === 'SUCCESS') {
+
+				var sessionToken = res.session.token
+
+				console.log("the res object in success is:")
+				console.dir(res)
+				console.log("the sessionToken is: " + sessionToken)
+			}
+			else {
+				console.log("the user does not have a session")
+			}
+		}
+	)
+})
+
+</script>
+
+
+</head>
+
+<body>
+
+<script type="text/javascript">
+
+
+  /***************************/
+  // Tom's code
+
+  var session_id = ""
+
+  var session_id_length = 20
+
+  if (sessionStorage.getItem('okta_session_id')) {
+  	session_id = sessionStorage.getItem('okta_session_id')
+  }
+  else {
+  	for (i=0; i < session_id_length; i++) {
+  		session_id += Math.floor(Math.random() * 10)
+  	}
+  	sessionStorage.setItem('okta_session_id', session_id)
+  }
+
+  console.log("the session id is: " + session_id)
+
+
+  /***************************/
+
+  var _user_id = ''; // Set to the user's ID, username, or email address, or '' if not yet known.
+  var _session_id = ''; // Set to a unique session ID for the visitor's current browsing session.
+
+  var _sift = window._sift = window._sift || [];
+  _sift.push(['_setAccount', '75b84898f1']);
+  _sift.push(['_setUserId', _user_id]);
+  _sift.push(['_setSessionId', _session_id]);
+  _sift.push(['_trackPageview']);
+
+ (function() {
+   function ls() {
+     var e = document.createElement('script');
+     e.src = 'https://cdn.sift.com/s.js';
+     document.body.appendChild(e);
+   }
+   if (window.attachEvent) {
+     window.attachEvent('onload', ls);
+   } else {
+     window.addEventListener('load', ls, false);
+   }
+ })();
+</script>
+
+<div class="container">
+	<div class="row">
+		<div class="col">
+			<div id="widget-container"></div>
+		</div>
+		
+		<div class="col">
+
+		</div>
+	</div>
+</div>
+
+</body>
+
+</html>

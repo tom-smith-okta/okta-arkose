@@ -16,111 +16,55 @@
 <!-- bootstrap bundle -->
 <script src="javascript/bootstrap.bundle.min.js"></script>
 
-<!-- okta sign-in widget -->
-<script src="javascript/okta-sign-in.min.js"></script>
-
 <script src="https://client.arkoselabs.com/fc/api/?onload=loadChallenge" async defer></script>
 
 <!-- css -->
 
-<link href = "css/okta-sign-in.min.css" rel = "stylesheet" type = "text/css">
-
-<link href = "css/okta-theme.css" rel = "stylesheet" type="text/css">
-
 <link href = "css/bootstrap.min.css" rel = "stylesheet" type="text/css">
 
-<script type="text/javascript">
-	
-	function arkose_test() {
-
-	}
-
-</script>
-
-
-<script>
-
-var baseUrl = "https://okta-arkose.oktapreview.com"
-
-var signInParams = {
-	baseUrl: baseUrl
-}
-
-var parsedUrl = new URL(window.location.href)
-
-var signIn = new OktaSignIn(signInParams)
-
-signIn.session.get(function (res) {
-
-	console.log("the result of session.get is: ")
-
-	console.dir(res)
-
-	if (res.status === 'ACTIVE') {
-		console.log("the user has a session")
-	}
-
-	// No session, or error retrieving the session. Render the Sign-In Widget.
-	else {
-		console.log("the user does not have a session")
-	}
-
-	signIn.renderEl(
-		{ el: '#widget-container'},
-		function success(res) {
-			console.log("the result of success is: ")
-
-			console.dir(res)
-
-			if (res.status === 'SUCCESS') {
-
-				var sessionToken = res.session.token
-
-				console.log("the res object in success is:")
-				console.dir(res)
-				console.log("the sessionToken is: " + sessionToken)
-			}
-			else {
-				alert("apparently the user does not have a session")
-			}
-		}
-	)
-})
-
-</script>
-
+<script src="//api.arkoselabs.com/v2/726E9EF7-02A0-C8AD-9B35-5577632DDE75/api.js" data-callback="setupEnforcement" async defer></script>
 
 </head>
 
 <body>
 
+
 <div class="container">
 	<div class="row">
-		<div class="col">
-<!-- 			<div id="widget-container"></div>
-
- -->
- 			<button id="arkoselabs_test">button</button>
- 		</div>
-		
-		<div class="col">
+		<div class="col-sm">
+			<button id="enforcement-trigger">log in</button>
 
 			<div class="CAPTCHA"></div>
+
+ 		</div>
+		
+		<div class="col-sm">
+
+<!--  			<div id="widget-container" style="display: none"></div>
+ -->
+ 			<div id="widget-container"></div>
 
 		</div>
 	</div>
 </div>
 
 <script>
-function loadChallenge() {
-    new ArkoseEnforcement({
-        public_key: "726E9EF7-02A0-C8AD-9B35-5577632DDE75",
-        target_html: "CAPTCHA",
-        callback: function() {
-            console.log("played");
-        }
+
+  function setupEnforcement(myEnforcement) {
+    myEnforcement.setConfig({
+      selector: '#enforcement-trigger',
+      onCompleted: function(response) {
+      	console.log("the response token is:")
+        console.log(response.token);
+        // $("#enforcement-trigger").hide()
+        sessionStorage.setItem("arkoseToken", response.token);
+        location.replace("okta.html");
+        // renderOktaWidget(response.token);
+
+      }
     });
-}
+  }
+
 </script>
 
 </body>

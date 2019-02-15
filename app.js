@@ -6,7 +6,7 @@ const bodyParser = require("body-parser")
 
 const express = require('express')
 
-// const fs = require('fs')
+var cors = require('cors')
 
 const request = require("request")
 
@@ -19,6 +19,8 @@ var port = process.env.PORT
 
 app.use(bodyParser.urlencoded({ extended: false }))
 
+app.use(bodyParser.json())
+
 app.use(express.static('public'))
 
 app.listen(port, function () {
@@ -27,83 +29,172 @@ app.listen(port, function () {
 
 //////////////////////////////////////////////////
 
-// HOME PAGE
-// app.get('/', function (req, res) {
-// 	fs.readFile('html/index.html', 'utf8', (err, page) => {
-// 		if (err) {
-// 			console.log("error reading the index.html file")
-// 		}
 
-// 		page = page.replace(/{{OKTA_CLIENT_ID}}/g, process.env.OKTA_CLIENT_ID)
-// 		page = page.replace(/{{OKTA_IDP_AUTHN}}/g, process.env.OKTA_IDP_AUTHN)
-// 		page = page.replace(/{{OKTA_IDP_REG}}/g, process.env.OKTA_IDP_REG)
-// 		page = page.replace(/{{OKTA_TENANT}}/g, process.env.OKTA_TENANT)
-// 		page = page.replace(/{{REDIRECT_URI}}/g, process.env.REDIRECT_URI)
+/******************************************************/
+// CORS stuff
 
-// 		res.send(page)
-// 	})
-// })
+var whitelist = ['http://localhost', 'http://localhost:9617', 'http://localhost:3378']
 
-app.post('/evaluateAuthn', function (req, res) {
-	console.dir(req.body)
+var corsOptions = {
+	origin: function (origin, callback) {
 
+		if (whitelist.indexOf(origin) !== -1 || !origin) {
+			callback(null, true)
+		} else {
+			callback(new Error('Not allowed by CORS'))
+		}
+	}
+}
+
+app.options("/*", function(req, res, next){
+	res.header('Access-Control-Allow-Origin', 'http://localhost:3378');
+	res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
+	res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
+	res.header('Access-Control-Allow-Credentials', true)
+	res.header("Access-Control-Allow-Headers", "x-okta-user-agent-extended, x-okta-xsrftoken, content-type");
+	res.sendStatus(200);
+});
+/*********************************************************/
+
+app.get('/api/v1/sessions/me', cors(corsOptions), function (req, res) {
 	var options = {
-		method: 'POST',
-		url: 'https://okta-sift.oktapreview.com/api/v1/authn',
+		method: 'GET',
+		url: process.env.OKTA_TENANT + '/api/v1/sessions/me',
 		headers: {
-			'cache-control': 'no-cache',
-			'Content-Type': 'application/json',
-			Accept: 'application/json'
-		},
-		body: {
-			username: req.body.username,
-			password: req.body.password,
-			options: {
-				multiOptionalFactorEnroll: true,
-				warnBeforePasswordExpired: true
-			}
-		},
-		json: true
+			 'Content-Type': 'application/json',
+			 Accept: 'application/json'
+		}
 	}
 
 	request(options, function (error, response, body) {
+		console.log(body)
+
 		if (error) throw new Error(error)
 
-		console.log(response)
+		console.log("the response is: ")
 
-		console.log("The body is: " + response.body)
+		console.dir(response)
 
-		if (response.body.status == "MFA_REQUIRED") {
+		res.header('Access-Control-Allow-Credentials', true)
 
-			console.log("the user's factors are: ")
+		console.log("the response from Okta is: ")
 
-			console.dir(response.body._embedded.factors)
+		console.dir(body)
 
-			for (factor in response.body._embedded.factors) {
-				console.log("the factor is: " + factor)
-			}
+		if (body.status == "SUCCESS") {
+			console.log("user successfully logged in")
 
-			// var stateToken = response.body.stateToken
-
-			// console.log("the state token is: " + stateToken)
-
-			// var url = "http://localhost:4536?stateToken=" + stateToken
-
-			res.send("got some results")
-
-
-			// res.redirect(url)
+			res.status(200).json(body)
 		}
-		else if (response.body.sessionToken) {
-
-			var sessionToken = response.body.sessionToken
-
-			console.log("the session token is: " + sessionToken)
-
-			var url = "https://okta-sift.oktapreview.com/oauth2/v1/authorize?client_id=0oaj9n8qnyWzhOvwv0h7&response_type=id_token&scope=openid&prompt=none&redirect_uri=http://localhost:4536&state=Af0ifjslDkj&nonce=n-0S6_WzA2Mj&sessionToken=" + sessionToken
-
-			res.redirect(url)
-
+		else {
+			res.status(401).json(body)
 		}
 	})
 })
+
+app.post('/api/v1/authn', cors(corsOptions), function (req, res) {
+	
+	console.log("the request body is: ")
+
+	console.dir(req.body)
+
+	var err = {
+		errorCode: "E0000004",
+		errorSummary: "Authentication failed",
+		errorLink: "E0000004",
+		errorId: "noContextTokenProvided",
+		errorCauses: []
+	}
+
+	// Check for the context token
+
+	if (!req.body.contextData) {
+		res.status(401).json(err)
+	}
+	else {
+
+		var contextToken = req.body.contextData
+
+		redeemContextToken(contextToken, function(error, response) {
+
+			if (!response.solved) {
+				err.errorId = "contextToken was no good"
+				res.status(401).json(err)
+			}
+			else {
+				var options = {
+					method: 'POST',
+					url: process.env.OKTA_TENANT + '/api/v1/authn',
+					headers: {
+						 'cache-control': 'no-cache',
+						 'Content-Type': 'application/json',
+						 Accept: 'application/json'
+					},
+					body: {
+						username: req.body.username,
+						password: req.body.password,
+						options: {
+							multiOptionalFactorEnroll: true,
+							warnBeforePasswordExpired: true
+						}
+					},
+					json: true
+				}
+
+				request(options, function (error, response, body) {
+					console.log(body)
+
+					if (error) throw new Error(error)
+
+					res.header('Access-Control-Allow-Credentials', true)
+
+					console.log("the response from Okta is: ")
+
+					console.dir(body)
+
+					if (body.status == "SUCCESS") {
+						console.log("user successfully logged in")
+
+						res.status(200).json(body)
+					}
+					else {
+						res.status(401).json(body)
+					}
+				})
+			}
+		})
+	}
+})
+
+app.get('/api/v1/authn', function (req, res) {
+	// response.setHeader('Content-Type', 'text/html');
+	// res.setHeader('', 'http://localhost:9617');
+
+	res.send("got a response to the authn endpoint")
+})
+
+function redeemContextToken(contextToken, callback) {
+
+	var url = "https://verify.arkoselabs.com/fc/v/"
+	url += "?private_key=" + process.env.PRIVATE_KEY
+	url += "&session_token=" + contextToken
+
+	var options = {
+		method: 'GET',
+	  	url: url,
+	  	headers: {
+	    	'cache-control': 'no-cache',
+	    	'Content-Type': 'application/json',
+	    	Accept: 'application/json'
+	    }
+	}
+
+	request(options, function (error, response, body) {
+	 	if (error) throw new Error(error)
+
+	 	console.log(body)
+
+	 	return callback(null, JSON.parse(body))
+	})
+}
+
