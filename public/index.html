@@ -16,6 +16,10 @@
 <!-- bootstrap bundle -->
 <script src="javascript/bootstrap.bundle.min.js"></script>
 
+<!-- okta sign-in widget -->
+<script src="javascript/okta-sign-in.min.js"></script>
+
+
 <!-- arkose labs -->
 <script src="//api.arkoselabs.com/v2/726E9EF7-02A0-C8AD-9B35-5577632DDE75/api.js" data-callback="setupEnforcement" async defer></script>
 
@@ -23,7 +27,57 @@
 
 <link href="css/bootstrap.min.css" rel="stylesheet" type="text/css">
 
+<link
+  href="https://ok1static.oktacdn.com/assets/js/sdk/okta-signin-widget/2.14.0/css/okta-sign-in.min.css"
+  type="text/css"
+  rel="stylesheet"/>
+
 <link href="https://getbootstrap.com/docs/4.2/examples/starter-template/starter-template.css" rel="stylesheet" type="text/css">
+
+<script>
+
+var baseUrl = "https://okta-arkose.oktapreview.com"
+
+var options = {
+  baseUrl: baseUrl,
+}
+
+var signIn = new OktaSignIn(options)
+
+signIn.session.get(function (res) {
+
+  console.log("the result of session.get is: ")
+
+  console.dir(res)
+
+  if (res.status === 'ACTIVE') {
+    console.log("the user has a session")
+
+    $("#login").hide()
+
+    $("#username").html(res.login)
+  }
+  else {
+    console.log("the user does not have a session")
+
+    $("#welcome").hide()
+  }
+})
+
+function logout(){
+  signIn.session.close(function (err) {
+    if (err) {
+      // The user has not been logged out, perform some error handling here.
+      return;
+    }
+
+    console.log("logged out user")
+    $("#welcome").hide()
+
+    $("#login").show()
+  });
+}
+</script>
 
 </head>
 
@@ -47,8 +101,19 @@
 <main role="main" class="container">
   <div class="starter-template">
     <h1>Welcome to Atko corp!</h1>
-    <p class="lead">Please log in to get started.</p>
-    <button id="enforcement-trigger">log in</button>
+
+    <div id = "welcome">
+      <p>It's great to have you here, <span id="username"></span></p>
+
+      <button id="logout" onclick="logout()">log out</button>
+
+    </div>
+
+    <div id = "login">
+      <p class="lead">Please log in to get started.</p>
+      <button id="enforcement-trigger">log in</button>
+    </div>
+
   </div>
 </main>
 
