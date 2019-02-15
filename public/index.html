@@ -16,54 +16,55 @@
 <!-- bootstrap bundle -->
 <script src="javascript/bootstrap.bundle.min.js"></script>
 
-<script src="https://client.arkoselabs.com/fc/api/?onload=loadChallenge" async defer></script>
+<!-- arkose labs -->
+<script src="//api.arkoselabs.com/v2/726E9EF7-02A0-C8AD-9B35-5577632DDE75/api.js" data-callback="setupEnforcement" async defer></script>
 
 <!-- css -->
 
-<link href = "css/bootstrap.min.css" rel = "stylesheet" type="text/css">
+<link href="css/bootstrap.min.css" rel="stylesheet" type="text/css">
 
-<script src="//api.arkoselabs.com/v2/726E9EF7-02A0-C8AD-9B35-5577632DDE75/api.js" data-callback="setupEnforcement" async defer></script>
+<link href="https://getbootstrap.com/docs/4.2/examples/starter-template/starter-template.css" rel="stylesheet" type="text/css">
 
 </head>
 
 <body>
 
+<nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+  <a class="navbar-brand" href="/">Atko</a>
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault" aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
 
-<div class="container">
-	<div class="row">
-		<div class="col-sm">
-			<button id="enforcement-trigger">log in</button>
+  <div class="collapse navbar-collapse" id="navbarsExampleDefault">
+    <ul class="navbar-nav mr-auto">
+      <li class="nav-item active">
+        <a class="nav-link" href="/">Home <span class="sr-only">(current)</span></a>
+      </li>
+    </ul>
+  </div>
+</nav>
 
-			<div class="CAPTCHA"></div>
-
- 		</div>
-		
-		<div class="col-sm">
-
-<!--  			<div id="widget-container" style="display: none"></div>
- -->
- 			<div id="widget-container"></div>
-
-		</div>
-	</div>
-</div>
+<main role="main" class="container">
+  <div class="starter-template">
+    <h1>Welcome to Atko corp!</h1>
+    <p class="lead">Please log in to get started.</p>
+    <button id="enforcement-trigger">log in</button>
+  </div>
+</main>
 
 <script>
 
-  function setupEnforcement(myEnforcement) {
-    myEnforcement.setConfig({
-      selector: '#enforcement-trigger',
-      onCompleted: function(response) {
-      	console.log("the response token is:")
-        console.log(response.token);
-        // $("#enforcement-trigger").hide()
-        sessionStorage.setItem("arkoseToken", response.token);
-        location.replace("okta.html");
-        // renderOktaWidget(response.token);
-
-      }
-    });
-  }
+function setupEnforcement(myEnforcement) {
+  myEnforcement.setConfig({
+    selector: '#enforcement-trigger',
+    onCompleted: function(response) {
+    	console.log("the response token is:")
+      console.log(response.token);
+      sessionStorage.setItem("arkoseToken", response.token);
+      location.replace("okta.html");
+    }
+  });
+}
 
 </script>
 

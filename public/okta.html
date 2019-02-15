@@ -23,6 +23,8 @@
 
 <link href = "css/bootstrap.min.css" rel = "stylesheet" type="text/css">
 
+<link href="https://getbootstrap.com/docs/4.2/examples/starter-template/starter-template.css" rel="stylesheet" type="text/css">
+
 <link
   href="https://ok1static.oktacdn.com/assets/js/sdk/okta-signin-widget/2.14.0/css/okta-sign-in.min.css"
   type="text/css"
@@ -109,23 +111,26 @@ signIn.session.get(function (res) {
 
 <body>
 
+<nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+  <a class="navbar-brand" href="/">Atko</a>
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault" aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
 
-<div class="container">
-	<div class="row">
-		<div class="col-sm">
-			<p><a href = "index.html">home</a></p>
- 		</div>
-		
-		<div class="col-sm">
+  <div class="collapse navbar-collapse" id="navbarsExampleDefault">
+    <ul class="navbar-nav mr-auto">
+      <li class="nav-item active">
+        <a class="nav-link" href="/">Home <span class="sr-only">(current)</span></a>
+      </li>
+    </ul>
+  </div>
+</nav>
 
-<!--  			<div id="widget-container" style="display: none"></div>
- -->
- 			<div id="widget-container"></div>
-
-		</div>
-	</div>
-</div>
-
+<main role="main" class="container">
+  <div class="starter-template">
+  	 	<div id="widget-container"></div>
+  </div>
+</main>
 
 </body>
 

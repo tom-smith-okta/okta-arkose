@@ -27,13 +27,10 @@ app.listen(port, function () {
 	console.log('App listening on port ' + port + '...');
 })
 
-//////////////////////////////////////////////////
-
-
 /******************************************************/
 // CORS stuff
 
-var whitelist = ['http://localhost', 'http://localhost:9617', 'http://localhost:3378']
+var whitelist = [ process.env.DOMAIN ]
 
 var corsOptions = {
 	origin: function (origin, callback) {
@@ -47,53 +44,20 @@ var corsOptions = {
 }
 
 app.options("/*", function(req, res, next){
-	res.header('Access-Control-Allow-Origin', 'http://localhost:3378');
+	res.header('Access-Control-Allow-Origin', process.env.DOMAIN);
 	res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
 	res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
 	res.header('Access-Control-Allow-Credentials', true)
 	res.header("Access-Control-Allow-Headers", "x-okta-user-agent-extended, x-okta-xsrftoken, content-type");
 	res.sendStatus(200);
-});
-/*********************************************************/
-
-app.get('/api/v1/sessions/me', cors(corsOptions), function (req, res) {
-	var options = {
-		method: 'GET',
-		url: process.env.OKTA_TENANT + '/api/v1/sessions/me',
-		headers: {
-			 'Content-Type': 'application/json',
-			 Accept: 'application/json'
-		}
-	}
-
-	request(options, function (error, response, body) {
-		console.log(body)
-
-		if (error) throw new Error(error)
-
-		console.log("the response is: ")
-
-		console.dir(response)
-
-		res.header('Access-Control-Allow-Credentials', true)
-
-		console.log("the response from Okta is: ")
-
-		console.dir(body)
-
-		if (body.status == "SUCCESS") {
-			console.log("user successfully logged in")
-
-			res.status(200).json(body)
-		}
-		else {
-			res.status(401).json(body)
-		}
-	})
 })
+
+/*********************************************************/
 
 app.post('/api/v1/authn', cors(corsOptions), function (req, res) {
 	
+	res.header('Access-Control-Allow-Credentials', true)
+
 	console.log("the request body is: ")
 
 	console.dir(req.body)
@@ -122,56 +86,139 @@ app.post('/api/v1/authn', cors(corsOptions), function (req, res) {
 				res.status(401).json(err)
 			}
 			else {
-				var options = {
-					method: 'POST',
-					url: process.env.OKTA_TENANT + '/api/v1/authn',
-					headers: {
-						 'cache-control': 'no-cache',
-						 'Content-Type': 'application/json',
-						 Accept: 'application/json'
-					},
-					body: {
-						username: req.body.username,
-						password: req.body.password,
-						options: {
-							multiOptionalFactorEnroll: true,
-							warnBeforePasswordExpired: true
+
+				var username = req.body.username
+
+				// get the Okta user id
+				getUserID(username, function(error, userID) {
+
+					if (error) {
+						err.errorID = "Authentication failed"
+						res.status(401).json(err)
+					}
+
+					console.log("the user id is: " + userID)
+
+					// move the user into a group that allows authn
+					unlockUser(userID, function(error) {
+
+						if (error) {
+							err.errorID = "Authentication failed"
+							res.status(401).json(err)							
 						}
-					},
-					json: true
-				}
 
-				request(options, function (error, response, body) {
-					console.log(body)
+						console.log("user moved into open group.")
 
-					if (error) throw new Error(error)
+						// attempt to authenticate the user vs. okta
+						authenticateUser(username, req.body.password, function(error, statusCode, body) {
+						
+							if (error) {
+								err.errorID = "Authentication failed"
+								res.status(401).json(err)							
+							}
 
-					res.header('Access-Control-Allow-Credentials', true)
+							console.log("the status code is " + statusCode)
+							console.log("the body is: " + body)
 
-					console.log("the response from Okta is: ")
+							res.status(statusCode).json(body)
 
-					console.dir(body)
+							// remove the user from the open group
+							lockUser(userID, function(error) {
 
-					if (body.status == "SUCCESS") {
-						console.log("user successfully logged in")
+								if (error) { console.log(error) }
 
-						res.status(200).json(body)
-					}
-					else {
-						res.status(401).json(body)
-					}
+							})		
+						})
+					})
 				})
 			}
 		})
 	}
 })
 
-app.get('/api/v1/authn', function (req, res) {
-	// response.setHeader('Content-Type', 'text/html');
-	// res.setHeader('', 'http://localhost:9617');
+function authenticateUser(username, password, callback) {
 
-	res.send("got a response to the authn endpoint")
-})
+	var options = {
+		method: 'POST',
+		url: process.env.OKTA_TENANT + '/api/v1/authn',
+		headers: {
+			 'cache-control': 'no-cache',
+			 'Content-Type': 'application/json',
+			 Accept: 'application/json'
+		},
+		body: {
+			username: username,
+			password: password,
+			options: {
+				multiOptionalFactorEnroll: false,
+				warnBeforePasswordExpired: false
+			}
+		},
+		json: true
+	}
+
+	request(options, function (error, response, body) {
+
+		if (error) return callback(error)
+
+		console.log("the response from Okta is: ")
+
+		console.dir(body)
+
+		var status
+
+		if (body.status == "SUCCESS") { status = 200 }
+		else { status = 401 }
+
+		return callback(null, status, body)
+	})
+}
+
+function getUserID(username, callback) {
+
+	var options = {
+		method: 'GET',
+		url: process.env.OKTA_TENANT + '/api/v1/users/' + username,
+	 	headers: {
+	    	'cache-control': 'no-cache',
+	     	Authorization: 'SSWS ' + process.env.OKTA_API_TOKEN,
+	     	'Content-Type': 'application/json',
+	     	Accept: 'application/json'
+	    }
+	}
+
+	request(options, function (error, response, body) {
+	  	console.log(body)
+
+		var obj = JSON.parse(body)
+
+		if (error) { return callback(error) }
+
+		if (obj.errorCode) { return callback(obj.errorCode) }
+
+		return callback(null, obj.id)
+	})
+}
+
+function lockUser(userID, callback) {
+
+	var options = {
+		method: 'DELETE',
+ 		url: process.env.OKTA_TENANT + '/api/v1/groups/' + process.env.OKTA_OPEN_GROUP_ID + '/users/' + userID,
+		headers: {
+    		'cache-control': 'no-cache',
+    		Authorization: 'SSWS ' + process.env.OKTA_API_TOKEN,
+    		'Content-Type': 'application/json',
+    		Accept: 'application/json'
+    	}
+    }
+
+	request(options, function (error, response, body) {
+		if (error) return callback(error)
+
+	 	console.log(body)
+	})
+}
 
 function redeemContextToken(contextToken, callback) {
 
@@ -198,3 +245,26 @@ function redeemContextToken(contextToken, callback) {
 	})
 }
 
+function unlockUser(userID, callback) {
+
+	var options = {
+		method: 'PUT',
+		url: process.env.OKTA_TENANT + '/api/v1/groups/' + process.env.OKTA_OPEN_GROUP_ID + '/users/' + userID,
+		headers: {
+			'cache-control': 'no-cache',
+	    	Authorization: 'SSWS ' + process.env.OKTA_API_TOKEN,
+	    	'Content-Type': 'application/json',
+	    	Accept: 'application/json'
+	    }
+	}
+
+	request(options, function (error, response, body) {
+		if (error) { return callback(error) }
+
+		if (response.statusCode != 204) {
+			return callback("error")
+		}
+
+		return callback(null)
+	})
+}
