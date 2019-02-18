@@ -66,80 +66,72 @@ app.post('/api/v1/authn', cors(corsOptions), function (req, res) {
 		errorCode: "E0000004",
 		errorSummary: "Authentication failed",
 		errorLink: "E0000004",
-		errorId: "",
+		errorId: "noContextTokenProvided",
 		errorCauses: []
 	}
 
 	// Check for the context token
-	// but don't redeem the context token until after Okta authn
-	// if user mis-types password they can still use the same context token
 
 	if (!req.body.contextData) {
 		res.status(401).json(err)
 	}
 	else {
 
-		var username = req.body.username
+		var contextToken = req.body.contextData
 
-		// get the Okta user id
-		getUserID(username, function(error, userID) {
+		redeemContextToken(contextToken, function(error, response) {
 
-			if (error) {
-				err.errorID = "Authentication failed"
+			if (!response.solved) {
+				err.errorId = "contextToken was no good"
 				res.status(401).json(err)
 			}
+			else {
 
-			console.log("the user id is: " + userID)
+				var username = req.body.username
 
-			// move the user into a group that allows authn
-			unlockUser(userID, function(error) {
+				// get the Okta user id
+				getUserID(username, function(error, userID) {
 
-				if (error) {
-					err.errorID = "Authentication failed"
-					res.status(401).json(err)							
-				}
-
-				console.log("user moved into open group.")
-
-				// attempt to authenticate the user vs. okta
-				authenticateUser(username, req.body.password, function(error, statusCode, body) {
-				
 					if (error) {
 						err.errorID = "Authentication failed"
-						res.status(401).json(err)							
+						res.status(401).json(err)
 					}
 
-					console.log("the status code is " + statusCode)
-					console.log("the body is: " + body)
+					console.log("the user id is: " + userID)
 
-					if (statusCode == 401) { // authn vs. okta failed
-						res.status(statusCode).json(body)
-					}
+					// move the user into a group that allows authn
+					unlockUser(userID, function(error) {
 
-					else {
+						if (error) {
+							err.errorID = "Authentication failed"
+							res.status(401).json(err)							
+						}
 
-						var contextToken = req.body.contextData
+						console.log("user moved into open group.")
 
-						redeemContextToken(contextToken, function(error, response) {
-
-							if (!response.solved) {
-								err.errorId = "contextToken was no good"
-								res.status(401).json(err)
+						// attempt to authenticate the user vs. okta
+						authenticateUser(username, req.body.password, function(error, statusCode, body) {
+						
+							if (error) {
+								err.errorID = "Authentication failed"
+								res.status(401).json(err)							
 							}
-							else {
-								res.status(statusCode).json(body)
-							}
-						})						
-					}
 
-					// remove the user from the open group
-					lockUser(userID, function(error) {
+							console.log("the status code is " + statusCode)
+							console.log("the body is: " + body)
 
-						if (error) { console.log(error) }
+							res.status(statusCode).json(body)
 
-					})		
+							// remove the user from the open group
+							lockUser(userID, function(error) {
+
+								if (error) { console.log(error) }
+
+							})		
+						})
+					})
 				})
-			})
+			}
 		})
 	}
 })
