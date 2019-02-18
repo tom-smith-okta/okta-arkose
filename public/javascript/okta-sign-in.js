@@ -11723,7 +11723,6 @@ var __WEBPACK_AMD_DEFINE_RESULT__;
 
   // Global error messages
   CONFIG_ERROR: 'CONFIG_ERROR',
-  REJECTION_ERROR: 'REJECTION_ERROR',
   UNSUPPORTED_BROWSER_ERROR: 'UNSUPPORTED_BROWSER_ERROR',
   OAUTH_ERROR: 'OAUTH_ERROR',
   AUTH_STOP_POLL_INITIATION_ERROR: 'AUTH_STOP_POLL_INITIATION_ERROR',
@@ -14264,12 +14263,6 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;
       return;
     }
 
-    // Rejection error
-    if (err && err.message === 'Your account is in invalid state: REJECT.') {
-      router.settings.callGlobalError(new Errors.RejectionError(Okta.loc('error.config')));
-      return;
-    }
-
     Util.triggerAfterError(router.controller, err);
   };
 
@@ -14525,12 +14518,6 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;
   }
   UnsupportedBrowserError.prototype = new Error();
 
-  function RejectionError(message) {
-    this.name = Enums.REJECTION_ERROR;
-    this.message = message || Okta.loc('error.config');
-  }
-  RejectionError.prototype = new Error();
-
   function OAuthError(message) {
     this.name = Enums.OAUTH_ERROR;
     this.message = message;
@@ -14569,7 +14556,6 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;
     OAuthError: OAuthError,
     RegistrationError: RegistrationError,
     AuthStopPollInitiationError: AuthStopPollInitiationError,
-    RejectionError: RejectionError,
     U2FError: U2FError,
     WebAuthnError: WebAuthnError
   };
@@ -33303,29 +33289,39 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;
 
     getSignInArgs: function getSignInArgs(username) {
       var multiOptionalFactorEnroll = this.get('multiOptionalFactorEnroll');
-
-      console.log("the options object is: ");
-
-      console.dir(options);
-
       var signInArgs = {
         username: username,
-        // contextData: options.contextData,
+        contextData: this.settings.options.contextData,
         options: {
           warnBeforePasswordExpired: true,
           multiOptionalFactorEnroll: multiOptionalFactorEnroll
         }
       };
 
-      if (options.hasOwnProperty("contextData")) {
-        if (options.contextData) {
-          signInArgs.contextData = options.contextData;
-        }
-      }
+
+      // signInArgs.contextData = "someValue";
+
+      console.log("the settings are:") 
+
+      console.dir(this.settings)
+
+      console.log("the options are:") 
+
+      console.dir(this.settings.options)
+
+
+      console.log("the options are:")
+
+      console.dir(this.settings.options.contextData)
 
       if (!this.settings.get('features.passwordlessAuth')) {
         signInArgs.password = this.get('password');
       }
+
+      console.log("the signInArgs are: ")
+
+      console.dir(signInArgs)
+
       return signInArgs;
     },
 

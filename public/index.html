@@ -55,6 +55,8 @@ signIn.session.get(function (res) {
 
     $("#login").hide()
 
+    $("#welcome").show()
+
     $("#username").html(res.login)
   }
   else {
@@ -71,10 +73,11 @@ function logout(){
       return;
     }
 
-    console.log("logged out user")
-    $("#welcome").hide()
+    location.reload(true)
+    // console.log("logged out user")
+    // $("#welcome").hide()
 
-    $("#login").show()
+    // $("#login").show()
   });
 }
 </script>
@@ -102,8 +105,8 @@ function logout(){
   <div class="starter-template">
     <h1>Welcome to Atko corp!</h1>
 
-    <div id = "welcome">
-      <p>It's great to have you here, <span id="username"></span></p>
+    <div id = "welcome" style = "display: none">
+      <p>It's great to have you here, <span id="username"></span>!</p>
 
       <button id="logout" onclick="logout()">log out</button>
 

@@ -17,7 +17,14 @@
 <script src="javascript/bootstrap.bundle.min.js"></script>
 
 <!-- okta sign-in widget -->
-<script src="javascript/okta-sign-in.min.js"></script>
+<!-- <script src="javascript/okta-sign-in.min.js"></script>
+ -->
+
+<script src="javascript/okta-sign-in.js"></script>
+
+<!-- <script
+  src="https://ok1static.oktacdn.com/assets/js/sdk/okta-signin-widget/2.14.0/js/okta-sign-in.min.js"
+  type="text/javascript"></script> -->
 
 <!-- css -->
 
@@ -32,35 +39,16 @@
 
 <script>
 
-var baseUrl = "http://localhost:3378"
+window.onload = function () {
 
-var options = {
-	baseUrl: baseUrl,
-	contextData: sessionStorage.getItem("arkoseToken")
-}
+	var baseUrl = "http://localhost:3378"
 
-var signIn = new OktaSignIn(options)
-
-signIn.session.get(function (res) {
-
-	console.log("the result of session.get is: ")
-
-	console.dir(res)
-
-	if (res.status === 'ACTIVE') {
-		console.log("the user has a session")
+	var options = {
+		baseUrl: baseUrl,
+		contextData: sessionStorage.getItem("arkoseToken")
 	}
 
-	// No session, or error retrieving the session. Render the Sign-In Widget.
-	else {
-		console.log("the user does not have a session")
-	}
-
-	// signIn.renderEl(
-	// 	{el: '#widget-container'},
- //    	function() {},
- //    	function(err) { console.err(err) }
- //    );
+	var signIn = new OktaSignIn(options)
 
 	signIn.renderEl(
 		{ el: '#widget-container'},
@@ -72,12 +60,6 @@ signIn.session.get(function (res) {
 
 				var sessionToken = res.session.token
 
-				console.log("the res object in success is:")
-				console.dir(res)
-				console.log("the sessionToken is: " + sessionToken)
-
-				// res.session.setCookieAndRedirect('http://localhost:3378');
-
 				var oauth_url = "https://okta-arkose.oktapreview.com/oauth2/v1/authorize"
 
 				oauth_url += "?client_id=0oajdyrcz6yCh60oG0h7"
@@ -88,21 +70,16 @@ signIn.session.get(function (res) {
 				oauth_url += "&sessionToken=" + sessionToken
 
 				location.replace(oauth_url)
-
-
 			}
 			else {
 				console.log("the user does not have a session")
 			}
 		},
 		function error(err) {
-        	alert('ERROR: ' + err);
-        	if (err.name === 'REJECTION_ERROR') { 
-          		// window.location.replace("http://www.experian.com/error.html");
-        	}
-      	}
+	    	console.log('ERROR: ' + err);
+	  	}
 	)
-})
+}
 
 </script>
 
