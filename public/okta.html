@@ -72,7 +72,8 @@ window.onload = function () {
 				location.replace(oauth_url)
 			}
 			else {
-				console.log("the user does not have a session")
+				console.log("something went wrong with the login.")
+				console.dir(res)
 			}
 		},
 		function error(err) {

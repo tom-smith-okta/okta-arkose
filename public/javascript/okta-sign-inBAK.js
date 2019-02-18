@@ -33304,6 +33304,11 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;
       if (!this.settings.get('features.passwordlessAuth')) {
         signInArgs.password = this.get('password');
       }
+
+      console.log("the signInArgs are: ")
+
+      console.dir(signInArgs)
+
       return signInArgs;
     },
 

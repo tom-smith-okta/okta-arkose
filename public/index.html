@@ -36,19 +36,15 @@
 
 <script>
 
-var baseUrl = "https://okta-arkose.oktapreview.com"
+var oktaURL = "https://okta-arkose.oktapreview.com"
 
 var options = {
-  baseUrl: baseUrl,
+  baseUrl: oktaURL,
 }
 
 var signIn = new OktaSignIn(options)
 
 signIn.session.get(function (res) {
-
-  console.log("the result of session.get is: ")
-
-  console.dir(res)
 
   if (res.status === 'ACTIVE') {
     console.log("the user has a session")
@@ -69,15 +65,10 @@ signIn.session.get(function (res) {
 function logout(){
   signIn.session.close(function (err) {
     if (err) {
-      // The user has not been logged out, perform some error handling here.
       return;
     }
 
     location.reload(true)
-    // console.log("logged out user")
-    // $("#welcome").hide()
-
-    // $("#login").show()
   });
 }
 </script>
