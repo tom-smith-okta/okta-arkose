@@ -85,7 +85,7 @@ app.post('/api/v1/authn', cors(corsOptions), function (req, res) {
 		getUserID(username, function(error, userID) {
 
 			if (error) {
-				err.errorID = "Authentication failed"
+				err.errorCauses.push("Could not find Okta ID for this user.")
 				res.status(401).json(err)
 			}
 
@@ -95,7 +95,7 @@ app.post('/api/v1/authn', cors(corsOptions), function (req, res) {
 			unlockUser(userID, function(error) {
 
 				if (error) {
-					err.errorID = "Authentication failed"
+					err.errorCauses.push("Could not move Okta user into authn group.")
 					res.status(401).json(err)							
 				}
 
@@ -105,12 +105,11 @@ app.post('/api/v1/authn', cors(corsOptions), function (req, res) {
 				authenticateUser(username, req.body.password, function(error, statusCode, body) {
 				
 					if (error) {
-						err.errorID = "Authentication failed"
 						res.status(401).json(err)							
 					}
 
 					console.log("the status code is " + statusCode)
-					console.log("the body is: " + body)
+					console.log("the body is: " + JSON.stringify(body))
 
 					if (statusCode == 401) { // authn vs. okta failed
 						res.status(statusCode).json(body)
@@ -123,7 +122,7 @@ app.post('/api/v1/authn', cors(corsOptions), function (req, res) {
 						redeemContextToken(contextToken, function(error, response) {
 
 							if (!response.solved) {
-								err.errorId = "contextToken was no good"
+								err.errorCauses.push("Context token did not pass inspection.")
 								res.status(401).json(err)
 							}
 							else {
@@ -159,7 +158,7 @@ function authenticateUser(username, password, callback) {
 			password: password,
 			options: {
 				multiOptionalFactorEnroll: false,
-				warnBeforePasswordExpired: false
+				warnBeforePasswordExpired: true
 			}
 		},
 		json: true
