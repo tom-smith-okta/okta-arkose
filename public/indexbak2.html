@@ -79,10 +79,6 @@
 
 function submit_creds() {
 
-  var username = $("#username").val()
-
-console.log("username:" + username )
-
   var data = {
     username: $("#username").val()
   }
@@ -181,14 +177,13 @@ console.log("username:" + username )
     <h1>Welcome to Atko corp!</h1>
 
     <div id = "welcome" style = "display: none">
-      <p>It's great to have you here, <span id="un"></span>!</p>
+      <p>It's great to have you here, <span id="username"></span>!</p>
 
       <button id="logout" onclick="logout()">log out</button>
 
     </div>
 
-
-    <div id = "login" style = "display: none">
+<!-- <!-- <!--     <div id = "login">
       <p class="lead">Please sign in to get started.</p>
 <!--       <button id="enforcement-trigger">log in</button>
  -->    </div>
@@ -198,8 +193,48 @@ console.log("username:" + username )
         <div class="card card-signin my-5">
           <div class="card-body">
             <h5 class="card-title text-center">Sign In</h5>
-<!--             <form class="form-signin">
- -->              <div class="form-label-group">
+            <form class="form-signin" action="#">
+              <div class="form-label-group">
+<!--                 <input type="text" id="username" class="form-control" placeholder="username" autofocus>
+ -->                <label for="username">username</label>
+              </div>
+
+              <div class="form-label-group">
+<!--                 <input type="password" id="inputPassword" class="form-control" placeholder="password">
+ -->                <label for="inputPassword">password</label>
+              </div>
+
+              <div class="custom-control custom-checkbox mb-3">
+                <input type="checkbox" class="custom-control-input" id="customCheck1">
+                <label class="custom-control-label" for="customCheck1">Remember password</label>
+              </div>
+<!--               <button class="btn btn-lg btn-primary btn-block text-uppercase" type="submit" id="enforcement-trigger">Sign in</button>
+ -->        
+<!--               <button class="btn btn-lg btn-primary btn-block text-uppercase" id="enforcement-trigger">Sign in</button>
+ -->
+<!--               <hr class="my-4">
+              <button class="btn btn-lg btn-google btn-block text-uppercase" type="submit"><i class="fab fa-google mr-2"></i> Sign in with Google</button>
+              <button class="btn btn-lg btn-facebook btn-block text-uppercase" type="submit"><i class="fab fa-facebook-f mr-2"></i> Sign in with Facebook</button> -->
+            </form>
+
+<!--             <button class="btn btn-lg btn-primary btn-block text-uppercase" id="enforcement-trigger">Sign in</button>
+ -->          </div>
+        </div>
+      </div>
+    </div> --> --> -->
+
+    <div id = "login2">
+      <p class="lead">Please sign in to get started.</p>
+<!--       <button id="enforcement-trigger">log in</button>
+ -->    </div>
+
+        <div class="row">
+      <div class="col-sm-9 col-md-7 col-lg-5 mx-auto">
+        <div class="card card-signin my-5">
+          <div class="card-body">
+            <h5 class="card-title text-center">Sign In</h5>
+            <form class="form-signin" action="/authn" method="POST">
+              <div class="form-label-group">
                 <input type="text" id="username" class="form-control" placeholder="username" autofocus>
                 <label for="username">username</label>
               </div>
@@ -215,13 +250,13 @@ console.log("username:" + username )
               </div> -->
 <!--               <button class="btn btn-lg btn-primary btn-block text-uppercase" type="submit" id="enforcement-trigger">Sign in</button>
  -->        
-              <button class="btn btn-lg btn-primary btn-block text-uppercase" id="enforcement-trigger">Sign in</button>
+              <button class="btn btn-lg btn-primary btn-block text-uppercase" type="submit" id="enforcement-trigger">Sign in</button>
 
 <!--               <hr class="my-4">
               <button class="btn btn-lg btn-google btn-block text-uppercase" type="submit"><i class="fab fa-google mr-2"></i> Sign in with Google</button>
               <button class="btn btn-lg btn-facebook btn-block text-uppercase" type="submit"><i class="fab fa-facebook-f mr-2"></i> Sign in with Facebook</button> -->
-<!--             </form>
- -->
+            </form>
+
 <!--             <button class="btn btn-lg btn-primary btn-block text-uppercase" id="enforcement-trigger">Sign in</button>
  -->          </div>
         </div>
@@ -238,9 +273,6 @@ console.log("username:" + username )
 function setupEnforcement(myEnforcement) {
   myEnforcement.setConfig({
     selector: '#enforcement-trigger',
-    onReady: () => {
-      $("#login").show()
-    },
     onCompleted: function(response) {
     	console.log("the response token is:")
       console.log(response.token);
