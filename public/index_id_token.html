@@ -29,39 +29,6 @@
 
 <script>
 
-var authClient = new OktaAuth({
-  url: 'https://okta-arkose.oktapreview.com',
-})
-
-authClient.session.exists()
-.then(function(exists) {
-  if (exists) { // logged in
-
-    console.log("the user has an okta session.")
-
-    update_ui()
-
-  } else { // not logged in
-
-    console.log("the user does not have an okta session.")
-
-    $("#login").show()
-  }
-})
-
-function log_out(){
-
-  authClient.signOut()
-  .then(function() {
-    console.log('successfully logged out')
-    location.reload(true)
-  })
-  .fail(function(err) {
-    console.error(err);
-  })
-
-}
-
 function submit_creds(contextData) {
 
   var data = {
@@ -85,25 +52,29 @@ function submit_creds(contextData) {
   }
 
   $.ajax(settings).done(function (response) {
+    console.log(response)
 
-    if (response.status === "SUCCESS") {
-      sessionStorage.setItem("first_name", response.user.profile.firstName)
-      authClient.session.setCookieAndRedirect(response.sessionToken)
-    }
-    else {
-      console.log("something went wrong.")
-      console.log(response)
-    }
+    // var oauth_url = "https://okta-arkose.oktapreview.com/oauth2/v1/authorize"
+
+    // oauth_url += "?client_id=0oajdyrcz6yCh60oG0h7"
+    // oauth_url += "&response_type=id_token"
+    // oauth_url += "&scope=openid profile&prompt=none"
+    // oauth_url += "&redirect_uri=http://localhost:3378"
+    // oauth_url += "&state=Af0ifjslDkj&nonce=n-0S6_WzA2Mj"
+    // oauth_url += "&sessionToken=" + response.sessionToken
+
+    // location.replace(oauth_url)
+
   })
 }
 
-function update_ui() {
+function update_ui(payload) {
 
   $("#login").hide()
 
   $("#welcome").show()
 
-  $("#un").html(sessionStorage.getItem("first_name"))
+  $("#un").html(payload.given_name)
 
 }
 
@@ -112,6 +83,90 @@ function update_ui() {
 </head>
 
 <body>
+
+<script>
+
+  window.onload = function() {
+    // Bootstrap the AuthJS Client
+    var authClient = new OktaAuth({
+      // Org URL
+      url: 'https://okta-arkose.oktapreview.com',
+      // OpenID Connect APP Client ID
+      clientId: '0oajdyrcz6yCh60oG0h7',
+      // Trusted Origin Redirect URI
+      redirectUri: 'http://localhost:3378'
+    });
+    // Attempt to retrieve ID Token from Token Manager
+    var idToken = authClient.tokenManager.get('idToken')
+    .then(idToken => {
+      // If ID Token exists, output it to the console
+      if (idToken) {
+        console.log(`hi ${idToken.claims.email}!`);
+      // If ID Token isn't found, try to parse it from the current URL
+      } else if (location.hash) {
+
+        var id_token = ""
+
+        var state = ""
+
+        console.log("the loacation.hash is: " + location.hash)
+        console.log("there is an id token in the url")
+
+        var arr = location.hash.split("#")
+
+        console.dir(arr)
+
+        var hash_values = arr[1]
+
+        var kvps = hash_values.split("&")
+
+        console.log("the key-value pairs are: ")
+        console.dir(kvps)
+
+        var this_kvp
+
+        for (var i = 0; i < kvps.length; i++) {
+          console.log("the kvp is: " + kvps[i])
+
+          this_kvp = kvps[i].split("=")
+
+          if (this_kvp[0] === "id_token") {
+            console.log("found an id_token")
+            id_token = this_kvp[1]
+          }
+
+          if (this_kvp[0] === "state") {
+            console.log("found a value for state")
+            state = this_kvp[1]
+          }
+        }
+
+        if (id_token == "") {
+          console.log("Could not find an id token in the url hash.")
+        }
+        else {
+          var token_parts = id_token.split(".")
+
+          var payload = atob(token_parts[1])
+
+          console.log("the payload is: " + payload)
+
+          update_ui(JSON.parse(payload))
+        }
+      } else {
+        // You're not logged in, you need a sessionToken
+
+        console.log("the user does not have an okta session.")
+
+      }
+    });
+  }
+
+
+
+</script>
+
+
 
 <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
   <a class="navbar-brand" href="/">Atko</a>
@@ -135,7 +190,7 @@ function update_ui() {
     <div id = "welcome" style = "display: none">
       <p>It's great to have you here, <span id="un"></span>!</p>
 
-      <button id="logout" onclick="log_out()">log out</button>
+      <button id="logout" onclick="logout()">log out</button>
 
     </div>
 
@@ -156,10 +211,8 @@ function update_ui() {
                   <input type="password" id="password" class="form-control" placeholder="password">
                   <label for="inputPassword">password</label>
                 </div>
-
-                <button class="btn btn-lg btn-primary btn-block text-uppercase" id="enforcement-trigger" onclick="submit_creds()">Sign in</button>
-
-<!--                 <button class="btn btn-lg btn-primary btn-block text-uppercase" id="enforcement-trigger">Sign in</button> -->
+          
+                <button class="btn btn-lg btn-primary btn-block text-uppercase" id="enforcement-trigger">Sign in</button>
             </div>
           </div>
       </div>
@@ -170,17 +223,17 @@ function update_ui() {
 
 <script>
 
-// function setupEnforcement(myEnforcement) {
-//   myEnforcement.setConfig({
-//     selector: '#enforcement-trigger',
-//     onCompleted: function(response) {
-//     	console.log("the response token is:")
-//       console.log(response.token);
-//       sessionStorage.setItem("arkoseToken", response.token);
-//       submit_creds(response.token);
-//     }
-//   });
-// }
+function setupEnforcement(myEnforcement) {
+  myEnforcement.setConfig({
+    selector: '#enforcement-trigger',
+    onCompleted: function(response) {
+    	console.log("the response token is:")
+      console.log(response.token);
+      sessionStorage.setItem("arkoseToken", response.token);
+      submit_creds(response.token);
+    }
+  });
+}
 
 </script>
 

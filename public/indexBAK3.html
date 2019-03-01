@@ -29,39 +29,6 @@
 
 <script>
 
-var authClient = new OktaAuth({
-  url: 'https://okta-arkose.oktapreview.com',
-})
-
-authClient.session.exists()
-.then(function(exists) {
-  if (exists) { // logged in
-
-    console.log("the user has an okta session.")
-
-    update_ui()
-
-  } else { // not logged in
-
-    console.log("the user does not have an okta session.")
-
-    $("#login").show()
-  }
-})
-
-function log_out(){
-
-  authClient.signOut()
-  .then(function() {
-    console.log('successfully logged out')
-    location.reload(true)
-  })
-  .fail(function(err) {
-    console.error(err);
-  })
-
-}
-
 function submit_creds(contextData) {
 
   var data = {
@@ -85,25 +52,33 @@ function submit_creds(contextData) {
   }
 
   $.ajax(settings).done(function (response) {
+    // console.log(response)
 
-    if (response.status === "SUCCESS") {
-      sessionStorage.setItem("first_name", response.user.profile.firstName)
-      authClient.session.setCookieAndRedirect(response.sessionToken)
-    }
-    else {
-      console.log("something went wrong.")
-      console.log(response)
-    }
+    window.location.href = response
+
+    var oauth_url = "https://okta-arkose.oktapreview.com/oauth2/v1/authorize"
+
+    oauth_url += "?client_id=0oajdyrcz6yCh60oG0h7"
+    oauth_url += "&response_type=id_token"
+    oauth_url += "&scope=openid profile&prompt=none"
+    oauth_url += "&redirect_uri=http://localhost:3378"
+    oauth_url += "&state=Af0ifjslDkj&nonce=n-0S6_WzA2Mj"
+    oauth_url += "&sessionToken=" + response.sessionToken
+
+    // authClient.session.setCookieAndRedirect(response.sessionToken)
+
+    // location.replace(oauth_url)
+
   })
 }
 
-function update_ui() {
+function update_ui(payload) {
 
   $("#login").hide()
 
   $("#welcome").show()
 
-  $("#un").html(sessionStorage.getItem("first_name"))
+  $("#un").html(payload.given_name)
 
 }
 
@@ -112,6 +87,41 @@ function update_ui() {
 </head>
 
 <body>
+
+<script>
+
+  // window.onload = function() {
+    // Bootstrap the AuthJS Client
+    var authClient = new OktaAuth({
+      // Org URL
+      url: 'https://okta-arkose.oktapreview.com',
+      // OpenID Connect APP Client ID
+      // clientId: '0oajdyrcz6yCh60oG0h7',
+      // Trusted Origin Redirect URI
+      redirectUri: 'http://localhost:3378',
+
+      // tokenManager: {
+      //   storage: 'sessionStorage'
+      // }
+    });
+
+    authClient.session.exists()
+    .then(function(exists) {
+      if (exists) {
+        console.log("the user has a session.")
+      } else {
+        console.log("the user is not logged in.")
+
+        $("#login").show()
+      }
+    })
+//  }
+
+
+
+</script>
+
+
 
 <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
   <a class="navbar-brand" href="/">Atko</a>
@@ -135,7 +145,7 @@ function update_ui() {
     <div id = "welcome" style = "display: none">
       <p>It's great to have you here, <span id="un"></span>!</p>
 
-      <button id="logout" onclick="log_out()">log out</button>
+      <button id="logout" onclick="logout()">log out</button>
 
     </div>
 
@@ -156,10 +166,8 @@ function update_ui() {
                   <input type="password" id="password" class="form-control" placeholder="password">
                   <label for="inputPassword">password</label>
                 </div>
-
-                <button class="btn btn-lg btn-primary btn-block text-uppercase" id="enforcement-trigger" onclick="submit_creds()">Sign in</button>
-
-<!--                 <button class="btn btn-lg btn-primary btn-block text-uppercase" id="enforcement-trigger">Sign in</button> -->
+          
+                <button class="btn btn-lg btn-primary btn-block text-uppercase" id="enforcement-trigger">Sign in</button>
             </div>
           </div>
       </div>
@@ -170,17 +178,17 @@ function update_ui() {
 
 <script>
 
-// function setupEnforcement(myEnforcement) {
-//   myEnforcement.setConfig({
-//     selector: '#enforcement-trigger',
-//     onCompleted: function(response) {
-//     	console.log("the response token is:")
-//       console.log(response.token);
-//       sessionStorage.setItem("arkoseToken", response.token);
-//       submit_creds(response.token);
-//     }
-//   });
-// }
+function setupEnforcement(myEnforcement) {
+  myEnforcement.setConfig({
+    selector: '#enforcement-trigger',
+    onCompleted: function(response) {
+    	console.log("the response token is:")
+      console.log(response.token);
+      sessionStorage.setItem("arkoseToken", response.token);
+      submit_creds(response.token);
+    }
+  });
+}
 
 </script>
 
