@@ -6,11 +6,7 @@ const bodyParser = require('body-parser')
 
 const express = require('express')
 
-// var cors = require('cors')
-
-const okta = require('@okta/okta-sdk-nodejs')
-
-const OktaAuth = require('@okta/okta-auth-js')
+const fs = require('fs')
 
 const request = require('request')
 
@@ -21,8 +17,6 @@ const app = express()
 
 var port = process.env.PORT
 
-// app.use(bodyParser.urlencoded({ extended: false }))
-
 app.use(bodyParser.json())
 
 app.use(express.static('public'))
@@ -31,61 +25,21 @@ app.listen(port, function () {
 	console.log('App listening on port ' + port + '...');
 })
 
-///////////////////////////////////////////////////
-
-// Set up Okta authn client
-
-var config = {
-	url: process.env.OKTA_TENANT
-}
-
-var authClient = new OktaAuth(config)
-
 //////////////////////////////////////////////////
 
-// Set up Okta SDK client
+app.get('/', function (req, res) {
 
-const client = new okta.Client({
-  orgUrl: process.env.OKTA_TENANT,
-  token: process.env.OKTA_API_TOKEN,
-  requestExecutor: new okta.DefaultRequestExecutor() // Will be added by default in 2.0
+	fs.readFile('html/index.html', "utf8", (err, page) => {
+		if (err) {
+			console.log("error reading the index.html file")
+		}
+
+		page = page.replace(/{{ARKOSE_PUBLIC_KEY}}/g, process.env.ARKOSE_PUBLIC_KEY)
+		page = page.replace(/{{OKTA_TENANT}}/g, process.env.OKTA_TENANT)
+		page = page.replace(/{{APP_HOME}}/g, process.env.APP_HOME)
+		res.send(page)
+	})
 })
-
-//////////////////////////////////////////////////
-
-// app.post('/authn', function (req, res) {
-
-// 	authClient.signIn({
-// 	  username: req.body.username,
-// 	  password: req.body.password
-// 	})
-// 	.then(function(transaction) {
-// 	  if (transaction.status === 'SUCCESS') {
-// 	    // authClient.session.setCookieAndRedirect(transaction.sessionToken); // Sets a cookie on redirect
-
-// 	    console.log("the transaction is: ")
-
-// 	    console.dir(transaction)
-
-// 	    res.send(transaction)
-
-// 	    // res.send(transaction.sessionToken)
-
-// 	    // console.log("redirecting...")
-
-// 	    // res.redirect("http://localhost:3378")
-
-// 	    // res.redirect("http://localhost:3378")
-
-// 	  } else {
-// 	    throw 'We cannot handle the ' + transaction.status + ' status';
-// 	  }
-// 	})
-// 	.fail(function(err) {
-// 	  console.error(err);
-// 	});
-
-// })
 
 app.post('/authn', function (req, res) {
 
@@ -107,94 +61,73 @@ app.post('/authn', function (req, res) {
 
 	if (!req.body.contextData) {
 		err.errorCauses.push("No context token included.")
-
-		// res.status(401).json(err)
+		res.status(401).json(err)
+		return
 	}
-	// else {
 
-		var username = req.body.username
+	var username = req.body.username
 
-		client.getUser(username)
-		.then(user => {
-		  console.log(user);
-		})
+	// get the Okta user id
+	getUserID(username, function(error, userID) {
 
+		if (error) {
+			console.log("Could not find an Okta ID for this user.")
+			err.errorCauses.push("Could not find Okta ID for this user.")
+			res.status(401).json(err)
+			return
+		}
 
+		console.log("the user id is: " + userID)
 
-		// get the Okta user id
-		getUserID(username, function(error, userID) {
+		// move the user into a group that allows authn
+		unlockUser(userID, function(error) {
 
 			if (error) {
-				err.errorCauses.push("Could not find Okta ID for this user.")
+				err.errorCauses.push("Could not move Okta user into authn group.")
 				res.status(401).json(err)
+				return							
 			}
 
-			console.log("the user id is: " + userID)
+			console.log("user moved into open group.")
 
-			// move the user into a group that allows authn
-			unlockUser(userID, function(error) {
-
+			// attempt to authenticate the user vs. okta
+			authenticateUser(username, req.body.password, function(error, statusCode, body) {
+			
 				if (error) {
-					err.errorCauses.push("Could not move Okta user into authn group.")
-					res.status(401).json(err)							
+					res.status(401).json(err)
+					return						
 				}
 
-				console.log("user moved into open group.")
+				console.log("the status code is " + statusCode)
+				console.log("the body is: " + JSON.stringify(body))
 
-				// attempt to authenticate the user vs. okta
-				authenticateUser(username, req.body.password, function(error, statusCode, body) {
-				
-					if (error) {
-						res.status(401).json(err)							
+				if (statusCode == 401) { // authn vs. okta failed
+					res.status(statusCode).json(body)
+					return
+				}
+
+				var contextToken = req.body.contextData
+
+				redeemContextToken(contextToken, function(error, response) {
+
+					if (!response.solved) {
+						err.errorCauses.push("Context token did not pass inspection.")
+						res.status(401).json(err)
+						return
 					}
 
-					console.log("the status code is " + statusCode)
-					console.log("the body is: " + JSON.stringify(body))
-
-					if (statusCode == 401) { // authn vs. okta failed
-						res.status(statusCode).json(body)
-					}
-
-					else {
-
-						var contextToken = req.body.contextData
-
-						redeemContextToken(contextToken, function(error, response) {
-
-							if (!response.solved) {
-								err.errorCauses.push("Context token did not pass inspection.")
-								res.status(401).json(err)
-							}
-							else {
-								res.status(statusCode).json(body)
-
-								// var oauth_url = "https://okta-arkose.oktapreview.com/oauth2/v1/authorize"
-
-								// oauth_url += "?client_id=0oajdyrcz6yCh60oG0h7"
-								// oauth_url += "&response_type=id_token"
-								// oauth_url += "&scope=openid&prompt=none"
-								// oauth_url += "&redirect_uri=http://localhost:3378"
-								// oauth_url += "&state=Af0ifjslDkj&nonce=n-0S6_WzA2Mj"
-								// oauth_url += "&sessionToken=" + body.sessionToken
-
-								// // oauth_url = "http://www.tomgsmith.com"
-
-								// res.redirect(oauth_url)
-
-							}
-						})						
-					}
+					res.status(statusCode).json(body)
 
 					// remove the user from the open group
 					lockUser(userID, function(error) {
 
 						if (error) { console.log(error) }
 
-					})		
+					})
 				})
 			})
 		})
-	// }
+	})
 })
 
 function authenticateUser(username, password, callback) {
@@ -249,6 +182,8 @@ function getUserID(username, callback) {
 	}
 
 	request(options, function (error, response, body) {
+		console.log("the result of getUserID is: ")
+
 	  	console.log(body)
 
 		var obj = JSON.parse(body)
