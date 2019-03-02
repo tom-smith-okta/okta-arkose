@@ -49,7 +49,7 @@ authClient.session.get()
   else if (session.status === "ACTIVE") {
     console.log("the user has an okta session.")
 
-    update_ui()
+    update_ui(session.login)
   }
 })
 .catch(function(err) {
@@ -100,7 +100,6 @@ function submit_creds(contextData) {
     console.log(response)
 
     if (response.status === "SUCCESS") {
-      sessionStorage.setItem("first_name", response._embedded.user.profile.firstName)
       authClient.session.setCookieAndRedirect(response.sessionToken)
     }
     else {
@@ -110,13 +109,13 @@ function submit_creds(contextData) {
   })
 }
 
-function update_ui() {
+function update_ui(login) {
 
   $("#login").hide()
 
   $("#welcome").show()
 
-  $("#un").html(sessionStorage.getItem("first_name"))
+  $("#un").html(login)
 
 }
 
