@@ -146,6 +146,7 @@ function update_ui(login) {
 
     <div id = "welcome" style = "display: none">
       <p>It's great to have you here, <span id="un" style="background: yellow"></span>!</p>
+      <p><i>see developer console for Okta session object</i></p>
 
       <button id="logout" onclick="log_out()">log out</button>
 
@@ -153,6 +154,8 @@ function update_ui(login) {
 
     <div id = "login" style = "display: none">
       <p class="lead">Please sign in to get started.</p>
+
+      {{CREDS}}
 
       <div class="row">
         <div class="col-sm-9 col-md-7 col-lg-5 mx-auto">
@@ -166,7 +169,7 @@ function update_ui(login) {
 
                 <div class="form-label-group">
                   <input type="password" id="password" class="form-control" placeholder="password">
-                  <label for="inputPassword">password</label>
+                  <label for="password">password</label>
                 </div>
                <button class="btn btn-lg btn-primary btn-block text-uppercase" id="enforcement-trigger">Sign in</button>
             </div>

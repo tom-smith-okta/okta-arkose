@@ -8,6 +8,8 @@ const express = require('express')
 
 const fs = require('fs')
 
+const OktaAuth = require('@okta/okta-auth-js')
+
 const request = require('request')
 
 ///////////////////////////////////////////////////
@@ -25,6 +27,12 @@ app.listen(port, function () {
 	console.log('App listening on port ' + port + '...');
 })
 
+var config = {
+	url: process.env.OKTA_TENANT
+}
+
+var authClient = new OktaAuth(config)
+
 //////////////////////////////////////////////////
 
 app.get('/', function (req, res) {
@@ -37,6 +45,15 @@ app.get('/', function (req, res) {
 		page = page.replace(/{{ARKOSE_PUBLIC_KEY}}/g, process.env.ARKOSE_PUBLIC_KEY)
 		page = page.replace(/{{OKTA_TENANT}}/g, process.env.OKTA_TENANT)
 		page = page.replace(/{{APP_HOME}}/g, process.env.APP_HOME)
+
+		// this is just a little hack to show an example username/password on the home
+		// page of the public demo
+		if (process.env.CREDS) {
+			page = page.replace(/{{CREDS}}/g, process.env.CREDS)
+		}
+		else {
+			page = page.replace(/{{CREDS}}/g, "")
+		}
 		res.send(page)
 	})
 })
@@ -65,156 +82,37 @@ app.post('/authn', function (req, res) {
 		return
 	}
 
-	var username = req.body.username
+	authClient.signIn({
+		username: req.body.username,
+		password: req.body.password
+	})
+	.then(function(transaction) {
+		if (transaction.status === 'SUCCESS') {
+			console.log("the transaction is: ")
+			console.dir(transaction)
 
-	// get the Okta user id
-	getUserID(username, function(error, userID) {
+			console.log("the sessionToken is: " + transaction.sessionToken)
 
-		if (error) {
-			console.log("Could not find an Okta ID for this user.")
-			err.errorCauses.push("Could not find Okta ID for this user.")
-			res.status(401).json(err)
-			return
-		}
+			var contextToken = req.body.contextData
 
-		console.log("the user id is: " + userID)
+			redeemContextToken(contextToken, function(error, response) {
 
-		// move the user into a group that allows authn
-		unlockUser(userID, function(error) {
-
-			if (error) {
-				err.errorCauses.push("Could not move Okta user into authn group.")
-				res.status(401).json(err)
-				return							
-			}
-
-			console.log("user moved into open group.")
-
-			// attempt to authenticate the user vs. okta
-			authenticateUser(username, req.body.password, function(error, statusCode, body) {
-			
-				if (error) {
+				if (!response.solved) {
+					err.errorCauses.push("Context token did not pass inspection.")
 					res.status(401).json(err)
-					return						
-				}
-
-				console.log("the status code is " + statusCode)
-				console.log("the body is: " + JSON.stringify(body))
-
-				if (statusCode == 401) { // authn vs. okta failed
-					res.status(statusCode).json(body)
 					return
 				}
 
-				var contextToken = req.body.contextData
-
-				redeemContextToken(contextToken, function(error, response) {
-
-					if (!response.solved) {
-						err.errorCauses.push("Context token did not pass inspection.")
-						res.status(401).json(err)
-						return
-					}
-
-					res.status(statusCode).json(body)
-
-					// remove the user from the open group
-					lockUser(userID, function(error) {
-
-						if (error) { console.log(error) }
-
-					})
-				})
+				res.json(transaction)
 			})
-		})
+		} else {
+			throw 'We cannot handle the ' + transaction.status + ' status';
+		}
+	})
+	.fail(function(err) {
+		console.error(err);
 	})
 })
-
-function authenticateUser(username, password, callback) {
-
-	var options = {
-		method: 'POST',
-		url: process.env.OKTA_TENANT + '/api/v1/authn',
-		headers: {
-			 'cache-control': 'no-cache',
-			 'Content-Type': 'application/json',
-			 Accept: 'application/json'
-		},
-		body: {
-			username: username,
-			password: password,
-			options: {
-				multiOptionalFactorEnroll: false,
-				warnBeforePasswordExpired: true
-			}
-		},
-		json: true
-	}
-
-	request(options, function (error, response, body) {
-
-		if (error) return callback(error)
-
-		console.log("the response from Okta is: ")
-
-		console.dir(body)
-
-		var status
-
-		if (body.status == "SUCCESS") { status = 200 }
-		else { status = 401 }
-
-		return callback(null, status, body)
-	})
-}
-
-function getUserID(username, callback) {
-
-	var options = {
-		method: 'GET',
-		url: process.env.OKTA_TENANT + '/api/v1/users/' + username,
-	 	headers: {
-	    	'cache-control': 'no-cache',
-	     	Authorization: 'SSWS ' + process.env.OKTA_API_TOKEN,
-	     	'Content-Type': 'application/json',
-	     	Accept: 'application/json'
-	    }
-	}
-
-	request(options, function (error, response, body) {
-		console.log("the result of getUserID is: ")
-
-	  	console.log(body)
-
-		var obj = JSON.parse(body)
-
-		if (error) { return callback(error) }
-
-		if (obj.errorCode) { return callback(obj.errorCode) }
-
-		return callback(null, obj.id)
-	})
-}
-
-function lockUser(userID, callback) {
-
-	var options = {
-		method: 'DELETE',
- 		url: process.env.OKTA_TENANT + '/api/v1/groups/' + process.env.OKTA_OPEN_GROUP_ID + '/users/' + userID,
-		headers: {
-    		'cache-control': 'no-cache',
-    		Authorization: 'SSWS ' + process.env.OKTA_API_TOKEN,
-    		'Content-Type': 'application/json',
-    		Accept: 'application/json'
-    	}
-    }
-
-	request(options, function (error, response, body) {
-		if (error) return callback(error)
-
-	 	console.log(body)
-	})
-}
 
 function redeemContextToken(contextToken, callback) {
 
@@ -224,43 +122,19 @@ function redeemContextToken(contextToken, callback) {
 
 	var options = {
 		method: 'GET',
-	  	url: url,
-	  	headers: {
-	    	'cache-control': 'no-cache',
-	    	'Content-Type': 'application/json',
-	    	Accept: 'application/json'
-	    }
-	}
-
-	request(options, function (error, response, body) {
-	 	if (error) throw new Error(error)
-
-	 	console.log(body)
-
-	 	return callback(null, JSON.parse(body))
-	})
-}
-
-function unlockUser(userID, callback) {
-
-	var options = {
-		method: 'PUT',
-		url: process.env.OKTA_TENANT + '/api/v1/groups/' + process.env.OKTA_OPEN_GROUP_ID + '/users/' + userID,
+		url: url,
 		headers: {
 			'cache-control': 'no-cache',
-	    	Authorization: 'SSWS ' + process.env.OKTA_API_TOKEN,
-	    	'Content-Type': 'application/json',
-	    	Accept: 'application/json'
-	    }
+			'Content-Type': 'application/json',
+			Accept: 'application/json'
+		}
 	}
 
 	request(options, function (error, response, body) {
-		if (error) { return callback(error) }
+		if (error) throw new Error(error)
 
-		if (response.statusCode != 204) {
-			return callback("error")
-		}
+		console.log(body)
 
-		return callback(null)
+		return callback(null, JSON.parse(body))
 	})
 }
